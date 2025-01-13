@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        * {
+            font-family: 'Times New Roman', serif;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 100;
+            font-size: 12px;
+            color: #0a0a0a;
+        }
+
+        #context-container {
+            display: flex;
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            align-items: center;
+            height: calc(100% - 300px);
+            z-index: 0;
+            background-color: #ffffff;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+            position: relative;
+            flex: 1;
+            z-index: 10;
+            background-color: #ffffff;
+        }
+
+        #selected-item-container {
+            position: fixed;
+            width: 300px;
+            height: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            top: 10px;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            background-color: #eff8ffe7;
+            border-radius: 10px;
+            z-index: 100;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            color: #000000;
+        }
+
+        #selected-item {
+            font-weight: bold;
+            text-align: center;
+            padding: 2px;
+            margin: 0;
+            line-height: 20px;
+            z-index: 100;
+            color: #000000;
+        }
+
+        #selected-item-button {
+            display: none;
+            background-color: #ffffff;
+            color: white;
+            padding: 2px 2px;
+            height: 2px;
+            border-radius: 2px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 10px;
+            margin-bottom: 5px;
+            text-align: center;
+            z-index: 100;
+            color: #000000;
+        }
+
+        #chat-menu {
+            position: relative;
+            width: 300px;
+            border-radius: 0px;
+            background-color: #ffffff;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            padding: 0px;
+        }
+
+        #textResponseContainer {
+            position: absolute;
+            bottom: 210px;
+            width: 300px;
+            overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            background-color: #ffffff00;
+            border: 0px solid #ffffff00;
+            border-radius: 12px;
+            z-index: 100;
+            color: #0e0e0e;
+        }
+
+        #textResponseContainer::-webkit-scrollbar {
+            display: none;
+            z-index: 100;
+        }
+
+        #textResponseContent {
+            border-radius: 12px;
+            margin-top: 20px;
+            text-align: left;
+            border: 0px solid #ffffff;
+            padding: 10px;
+            background-color: #ffffff;
+            z-index: 200;
+            color: #181818;
+        }
+
+        #chat-input {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            width: 230px;
+            height: 180px;
+            padding: 10px;
+            font-size: 12px;
+            border: 1px solid #ffffff;
+            border-radius: 12px;
+            text-align: left;
+            color: #0e0e0e;
+        }
+
+        #chat-input:hover {
+            border-color: #3a96dd;
+        }
+
+        #inputMethod {
+            position: absolute;
+            width: 40px;
+            height: 30px;
+            bottom: 160px;
+            right: 0;
+            border-radius: 10px;
+            background-image: url('icon-url-here'); /* Replace with appropriate icon URL */
+            background-size: cover;
+            cursor: pointer;
+        }
+
+        #inputMethod:hover {
+            background-color: #3a96dd6b;
+        }
+
+        #audioFileInput {
+            position: absolute;
+            width: 220px;
+            bottom: 160px;
+            left: 2px;
+            height: 30px;
+            border-radius: 12px;
+            padding: 0px 10px;
+            font-size: 12px;
+            background: #ffffff;
+        }
+
+        #cancelButton {
+            position: absolute;
+            bottom: 130px;
+            right: 10px;
+            width: 20px;
+            height: 20px;
+            display: none;
+            border: 0px solid #ccc;
+            border-radius: 50%;
+            background-image: url('https://storage.googleapis.com/szcontexts/Icons/Cancel.png'); /* Replace with appropriate cancel icon URL */
+            background-size: cover;
+            cursor: pointer;
+            z-index: 100;
+        }
+
+        #recordButton {
+            position: absolute;
+            bottom: 90px;
+            right: 5px;
+            width: 30px;
+            height: 30px;
+            border: 0px solid #ccc;
+            border-radius: 50%;
+            background-image: url('https://storage.googleapis.com/szcontexts/Icons/Rec.png'); 
+            background-size: cover;
+            cursor: pointer;
+            z-index: 100;
+        }
+
+        #recordButton.recording {
+            background-color: #3a96dd;
+        }
+    
+        #retryButton {
+            position: absolute;
+            bottom: 60px;
+            right: 10px;
+            width: 20px;
+            height: 20px;
+            border: 0px solid #ccc;
+            border-radius: 50%;
+            background-image: url('https://storage.googleapis.com/szcontexts/Icons/Retry.png'); /* Replace with appropriate retry icon URL */
+            background-size: cover;
+            cursor: pointer;
+            z-index: 100;
+        }
+
+        #send-button {
+            position: absolute;
+            bottom: 10px;
+            right: 0px;
+            width: 40px;
+            height: 40px;
+            border: 0px solid #ccc;
+            border-radius: 10px;
+            background-image: url('https://storage.googleapis.com/szcontexts/Icons/Send.png'); /* Replace with appropriate send icon URL */
+            background-size: cover;
+            cursor: pointer;
+            z-index: 100;
+        }
+        
+        #send-button:hover,
+        #cancelButton:hover,
+        #recordButton:hover,
+        #retryButton:hover {
+            transform: scale(1.5);
+            opacity: 0.8;
+        }
+
+        /* Disabled: Disable hover transforms on devices without real hover (touchscreens) */
+        /*
+        @media (hover: none) {
+            #send-button:hover,
+            #cancelButton:hover,
+            #recordButton:hover,
+            #retryButton:hover {
+                transform: none;
+                opacity: 1;
+            }
+        }
+        */
+
+        .loading {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            display: fixed;
+            align-items: center;
+            justify-content: center;
+            margin-top: 10px;
+            width: 100%;
+            z-index: 100;
+        }
+
+        .loading span {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            margin: 0 2px;
+            background-color: #3a96dd;
+            border-radius: 50%;
+            animation: loadingAnimation 1s linear infinite;
+            z-index: 100;
+        }
+
+        @keyframes loadingAnimation {
+            0% { transform: translateX(-20px); }
+            25% { transform: translateX(0px); }
+            50% { transform: translateX(20px); }
+            75% { transform: translateX(0px); }
+            100% { transform: translateX(-20px); }
+        }
+
+        .loading.complete span {
+            background-color: #3a96dd;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            z-index: 100;
+        }
+
+        /* Voice Graphic Styles */
+        #voice-graphic {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 30px;
+            background-image: url('https://storage.cloud.google.com/szcontexts/Icons/SketchWaver%200.png');
+            background-size: cover;
+            display: block;
+            animation: voiceAnimation 4s infinite;
+            z-index: 300;
+        }
+
+        #voice-cover-element {
+            display: none;
+            position: fixed;
+            bottom: 0px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 200px;
+            z-index: 300;
+            background: url('https://storage.cloud.google.com/szcontexts/InterfaceVideo/WavLoop.gif') no-repeat center center, white;
+            background-size: cover, cover;
+        }
+
+        #voice-cover-back {
+            position: fixed;
+            bottom: 0px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 200px;
+            z-index: 300;
+            mask-image: linear-gradient(to right, rgb(255, 255, 255) 0%, rgba(255, 255, 255, 0) 50%, rgb(255, 255, 255) 100%);
+            -webkit-mask-image: linear-gradient(to right, rgb(255, 255, 255) 0%, rgba(255, 255, 255, 0) 50%, rgb(255, 255, 255) 100%);
+            background: white;
+            background-size: cover, cover;
+        }
+
+        @keyframes voiceAnimation {
+            0% { transform: translateX(-50%) scale(1); opacity: 1; }
+            50% { transform: translateX(-50%) scale(1.5); opacity: 0.5; }
+            100% { transform: translateX(-50%) scale(1); opacity: 1; }
+        }
+
+        /* Veil Element Styles */
+        #veil-element {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #ffffffb7;
+            z-index: -10;
+        }
+
+    </style>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</head>
+
+<body>
+
+    <div id="context-container">
+        <div id="header-bar"></div>
+        <div id="map"></div>
+    </div>
+
+    <div id="selected-item-container">
+        <label id="selected-item">NSANGI-AKELLO-APUULI</label>
+        <a id="selected-item-button" href="#" target="_blank">Button</a>
+    </div>
+
+    <div id="voice-graphic"></div>
+
+    <div id="voice-cover-element">
+        <div id="voice-cover-back"></div>
+    </div>
+
+    <!-- Chat Menu -->
+    <div id="chat-menu">
+        <!-- Text Response Container -->
+        <div id="textResponseContainer" class="text-response">
+            <div id="textResponseContent"></div> <!-- Added this div to prevent null error -->
+        </div>
+        
+        <!-- Chat Input -->
+        <textarea id="chat-input" placeholder="Its Nsangi-Akello-Apuuli here ..." class="chat-input"></textarea>
+        <div id="notification" class="loading" style="display: none;">
+            <span></span><span></span><span></span><span></span><span></span>
+        </div>
+
+        <!-- File Upload Input -->
+        <input type="file" id="audioFileInput" accept="audio/*" class="control-element" style="display: none;" />
+
+        <!-- Input Method Dropdown -->
+        <select id="inputMethod" class="control-element" style="appearance: none; -webkit-appearance: none; -moz-appearance: none; text-align: center; font-size: 10px;">
+            <option value="record" selected>Record</option>
+            <option value="file">File</option>
+        </select>
+
+        <!-- Buttons -->
+        <button id="cancelButton" type="button"></button>
+        <button id="recordButton" type="button"></button>
+        <button id="retryButton" type="button"></button>
+        <button id="send-button" type="button"></button>
+    </div>
+
+</body>
+
+<script>
+    const OPENAI_KEY = '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';
+    const ASSISTANT_ID = 'asst_DFbZYMM5JUFu6KsfokMVNF4V';
+   
+    document.addEventListener('DOMContentLoaded', function() {
+
+        const inputMethod = document.getElementById('inputMethod');
+        const audioFileInput = document.getElementById('audioFileInput');
+        const recordButton = document.getElementById('recordButton');
+        const cancelButton = document.getElementById('cancelButton');
+        const retryButton = document.getElementById('retryButton');
+        const statusElem = document.getElementById('status') || document.createElement('p'); // Ensure statusElem is not null
+        const transcriptionResult = document.getElementById('chat-input');
+
+        let mediaRecorder;
+        let audioChunks = [];
+        let lastRecordingBlob;
+
+        // Set default display for record option
+        audioFileInput.style.display = 'none';
+        recordButton.style.display = 'block';
+        cancelButton.style.display = 'block';
+
+        inputMethod.addEventListener('change', () => {
+            const method = inputMethod.value;
+            if (method === 'file') {
+                audioFileInput.style.display = 'block';
+                recordButton.style.display = 'none';
+                cancelButton.style.display = 'none';
+            } else if (method === 'record') {
+                audioFileInput.style.display = 'none';
+                recordButton.style.display = 'block';
+                cancelButton.style.display = 'block';
+            }
+        });
+
+        audioFileInput.addEventListener('change', () => {
+            const file = audioFileInput.files[0];
+            if (file) {
+                sendForTranscription(file);
+            }
+        });
+
+        // TOGGLE RECORDING
+        recordButton.addEventListener('pointerup', () => {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        });
+
+        // START RECORDING
+        function startRecording() {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.start();
+                    console.log('Recording started');
+
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+                        lastRecordingBlob = audioBlob;
+                        audioChunks = []; // Clear for the next recording
+                        console.log('Recording stopped');
+                        cacheRecording(new File([audioBlob], `recording_${new Date().toISOString().replace(/[:.]/g, '-')}.mp3`, { type: 'audio/mp3' }));
+                        sendForTranscription(new File([audioBlob], `recording_${new Date().toISOString().replace(/[:.]/g, '-')}.mp3`, { type: 'audio/mp3' }));
+                    };
+
+                    recordButton.classList.add('recording');
+                    cancelButton.disabled = false;
+                })
+                .catch(error => {
+                    console.error('Microphone access error:', error);
+                    alert('Failed to access microphone. Ensure the site is served over HTTPS.');
+                });
+        }
+
+        // STOP RECORDING
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+                recordButton.classList.remove('recording');
+                recordButton.disabled = false;
+                cancelButton.disabled = true;
+            }
+        }
+
+        // CANCEL RECORDING
+        cancelButton.addEventListener('pointerup', () => {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+                audioChunks = []; // Clear the chunks to delete the recording
+                recordButton.classList.remove('recording');
+                recordButton.disabled = false;
+                cancelButton.disabled = true;
+            }
+            statusElem.textContent = "Recording session cancelled.";
+        });
+
+        // RETRY RECORDING
+        retryButton.addEventListener('pointerup', () => {
+            if (lastRecordingBlob) {
+                const fileName = `retry_recording_${new Date().toISOString().replace(/[:.]/g, '-')}.mp3`;
+                const file = new File([lastRecordingBlob], fileName, { type: 'audio/mp3' });
+                sendForTranscription(file);
+            } else {
+                alert("No previous recording to retry.");
+            }
+        });
+
+        function cacheRecording(file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    localStorage.setItem('lastRecording', event.target.result);
+                } catch (e) {
+                    console.error("Failed to cache recording:", e);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function sendForTranscription(file) {
+            if (!statusElem) {
+                console.error("Status element not found.");
+                return;
+            }
+            statusElem.textContent = "Transcription in progress...";
+
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("model", "whisper-1");
+
+            fetch("https://api.openai.com/v1/audio/transcriptions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${OPENAI_KEY}`
+                },
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(errorText => {
+                        throw new Error(`Error: ${response.status} - ${errorText}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                statusElem.textContent = "Transcription completed successfully.";
+                insertTextAtCursor(transcriptionResult, data.text || "");
+            })
+            .catch(error => {
+                statusElem.textContent = `Exception: ${error.message}`;
+                console.error(error);
+            });
+        }
+
+        function insertTextAtCursor(textarea, text) {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const before = textarea.value.substring(0, start);
+            const after  = textarea.value.substring(end, textarea.value.length);
+            textarea.value = before + text + after;
+            textarea.selectionStart = textarea.selectionEnd = start + text.length;
+        }
+
+        // Attach the sendChatMessage function to the send button
+        document.getElementById('send-button').addEventListener('click', sendChatMessage);
+
+        async function sendChatMessage() {
+            const inputText = document.getElementById('chat-input').value.trim();
+            if (!inputText) {
+                alert('Please say something in the chat');
+                return;
+            }
+            
+            // Immediately play filler audio
+            window.fillerPromise = playFillerAudio();
+
+            // Display the VoiceCover element
+            document.getElementById('voice-cover-element').style.display = 'block';
+
+            const selectedItem = document.getElementById('selected-item').textContent.replace("", "");
+            const escortPrompt = `This input from the user: ${inputText} Consider this context if the user has provided it: ${selectedItem}`;
+
+            try {
+                document.getElementById('notification').style.display = 'flex';
+
+                // Retrieve the stored thread ID from localStorage
+                let threadId = localStorage.getItem('openai_thread_id');
+
+                if (!threadId) {
+                    console.log("Creating a new thread...");
+
+                    // Create a new thread
+                    const threadResponse = await fetch('https://api.openai.com/v1/threads', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${OPENAI_KEY}`,
+                            'OpenAI-Beta': 'assistants=v2',
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (!threadResponse.ok) {
+                        throw new Error(`Failed to create thread: ${threadResponse.statusText}`);
+                    }
+
+                    const threadData = await threadResponse.json();
+                    threadId = threadData.id; // Extract thread ID from response
+                    console.log(`Thread created with ID: ${threadId}`);
+
+                    // Store the thread ID in localStorage
+                    localStorage.setItem('openai_thread_id', threadId);
+                    console.log(`Thread ID stored: ${threadId}`);
+                } else {
+                    console.log(`Using existing thread ID: ${threadId}`);
+                }
+
+                console.log("Adding message to the thread...");
+                await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${OPENAI_KEY}`,
+                        'OpenAI-Beta': 'assistants=v2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        role: 'user',
+                        content: escortPrompt
+                    })
+                });
+
+                console.log("Message added to the thread.");
+
+                console.log("Running the assistant...");
+                await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${OPENAI_KEY}`,
+                        'OpenAI-Beta': 'assistants=v2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        assistant_id: ASSISTANT_ID
+                    })
+                });
+
+                checkRunStatus(threadId);
+                
+            } catch (error) {
+                document.getElementById('notification').style.display = 'none';
+                document.getElementById('voice-cover-element').style.display = 'none'; // Hide on error
+                console.error('Error:', error);
+                alert('An error occurred while running the request. Please try again.');
+            }
+        }
+
+        async function checkRunStatus(threadId) {
+            try {
+                let status;
+                do {
+                    console.log("Checking run status...");
+                    const statusResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
+                        headers: {
+                            'Authorization': `Bearer ${OPENAI_KEY}`,
+                            'OpenAI-Beta': 'assistants=v2'
+                        }
+                    });
+
+                    const statusData = await statusResponse.json();
+                    status = statusData.data[0].status;
+                    console.log(`Run status: ${status}`);
+
+                    if (status === 'completed') {
+                        await getMessages(threadId); // Ensure getMessages is awaited
+                        document.getElementById('notification').innerText = 'Document generated successfully!';
+                    } else if (status === 'in_progress' || status === 'queued') {
+                        console.log("Run in progress or queued, checking again in 5 seconds...");
+                        await new Promise(resolve => setTimeout(resolve, 5000));
+                    } else {
+                        throw new Error('Unexpected run status: ' + status);
+                    }
+                } while (status !== 'completed');
+            } catch (error) {
+                document.getElementById('notification').style.display = 'none';
+                document.getElementById('voice-cover-element').style.display = 'none'; // Hide on error
+                console.error('Error checking run status:', error);
+                alert('An error occurred while checking run status. Please try again.');
+            }
+        }
+
+        async function getMessages(threadId) {
+            try {
+                const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+                    headers: {
+                        'Authorization': `Bearer ${OPENAI_KEY}`,
+                        'OpenAI-Beta': 'assistants=v2'
+                    }
+                });
+
+                if (!messagesResponse.ok) {
+                    throw new Error(`HTTP error! status: ${messagesResponse.status}`);
+                }
+
+                const messagesData = await messagesResponse.json();
+                const messages = messagesData.data;
+
+                for (const messageNode of messages) {
+                    if (messageNode.role !== 'system' && messageNode.role !== 'user') {
+                        const content = JSON.parse(messageNode.content[0].text.value);
+                        const { audioTrigger, textResponse } = content.responsePack[0];
+                        
+                        // Display the text response
+                        displayTextResponse(textResponse);
+
+                        // Clear the chat input field
+                        document.getElementById('chat-input').value = '';
+
+                        // If an audio trigger exists, wait for the filler audio to finish, then play
+                        if (audioTrigger) {
+                            if (window.fillerPromise) {
+                                await window.fillerPromise; 
+                            }
+                            handleAudioResponse(audioTrigger);
+                        }
+                        
+                        break; // Process only the first assistant message
+                    }
+                }
+
+                console.log("Response retrieved successfully!");
+                document.getElementById('notification').style.display = 'none';
+                document.getElementById('voice-cover-element').style.display = 'none'; // Hide after response
+            } catch (error) {
+                document.getElementById('notification').style.display = 'none'; 
+                document.getElementById('voice-cover-element').style.display = 'none'; // Hide on error
+                console.error('Error fetching messages:', error); // More specific error message
+                alert('An error occurred while fetching the response.');
+            }
+        }
+
+        function displayTextResponse(textResponse) {
+            const responseContent = document.getElementById('textResponseContent');
+            responseContent.innerHTML = formatResponse(textResponse);
+            document.getElementById('textResponseContainer').style.display = 'block';
+            document.getElementById('textResponseContainer').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Audio Lists Definition with file ranges
+        const audioLists = {
+            "Audio filler": {
+            baseUrl: "https://storage.cloud.google.com/szcontexts/AudSound/0IntroFiller/",
+            range: { start: 1, end: 2 }
+            },
+            "Greeting": {
+                baseUrl: "https://storage.cloud.google.com/szcontexts/AudSound/",
+                range: { start: 1, end: 2 }
+            },
+            "Post-greeting": {
+                baseUrl: "https://storage.cloud.google.com/szcontexts/AudSound/",
+                range: { start: 1, end: 2 }
+            },
+            "Boring": {
+                baseUrl: "https://storage.cloud.google.com/szcontexts/AudSound/",
+                range: { start: 1, end: 2 }
+            },
+            "Naughty": {
+                baseUrl: "https://storage.cloud.google.com/szcontexts/AudSound/",
+                range: { start: 1, end: 2 }
+            },
+            "Excitement": {
+                baseUrl: "https://storage.cloud.google.com/szcontexts/AudSound/",
+                range: { start: 1, end: 2 }
+            },
+            "Anticipation": {
+                baseUrl: "https://storage.cloud.google.com/szcontexts/AudSound/",
+                range: { start: 1, end: 2 }
+            },
+            "Motivation": {
+                baseUrl: "https://storage.cloud.google.com/szcontexts/AudSound/",
+                range: { start: 1, end: 2 }
+            },
+            "Celebration": {
+                baseUrl: "https://storage.cloud.google.com/szcontexts/AudSound/",
+                range: { start: 1, end: 2 }
+            },
+            "Reflection": {
+                baseUrl: "https://storage.cloud.google.com/szcontexts/AudSound/",
+                range: { start: 1, end: 2 }
+            },
+            "Lost": {
+                baseUrl: "https://storage.cloud.google.com/szcontexts/AudSound/",
+                range: { start: 1, end: 2 }
+            },
+            "Anxiety": {
+                baseUrl: "https://storage.cloud.google.com/szcontexts/AudSound/",
+                range: { start: 1, end: 2 }
+            },
+            "Wonder": {
+                baseUrl: "https://storage.cloud.google.com/szcontexts/AudSound/",
+                range: { start: 1, end: 2 }
+            }
+        };
+
+        let fillerAudioInProgress = false;
+
+        function playFillerAudio() {
+            return new Promise((resolve) => {
+                const audioConfig = audioLists["Audio filler"];
+                const { baseUrl, range } = audioConfig;
+                const randomNumber = Math.floor(Math.random() * (range.end - range.start + 1)) + range.start;
+                const audioSrc = `${baseUrl}${randomNumber}.mp3`;
+                
+                const fillerAudio = new Audio(audioSrc);
+                fillerAudioInProgress = true;
+
+                fillerAudio.play().catch((error) => {
+                console.error("Filler audio playback failed:", error);
+                fillerAudioInProgress = false;
+                resolve();
+                });
+
+                fillerAudio.onended = () => {
+                fillerAudioInProgress = false;
+                resolve();
+                };
+            });
+        }
+
+
+        function handleAudioResponse(trigger) {
+            const videocreElement = document.getElementById('videocre');
+            const audioConfig = audioLists[trigger];
+            
+            if (audioConfig) {
+                const { baseUrl, range } = audioConfig;
+                const randomNumber = Math.floor(Math.random() * (range.end - range.start + 1)) + range.start;
+                const audioSrc = `${baseUrl}${randomNumber}.mp3`;
+                
+                const audio = new Audio(audioSrc);
+                
+                // Display the VoiceCover element
+                const voiceCoverElement = document.getElementById('voice-cover-element');
+                voiceCoverElement.style.display = 'block';
+                
+                audio.play().catch(error => {
+                    console.error('Audio playback failed:', error);
+                    voiceCoverElement.style.display = 'none'; // Hide on error
+                });
+                
+                audio.onended = () => {
+                    // Hide the VoiceCover element after audio playback
+                    voiceCoverElement.style.display = 'none';
+                };
+                
+                audio.onerror = (e) => {
+                    console.error('Error playing audio:', e);
+                    voiceCoverElement.style.display = 'none'; // Hide on error
+                };
+            } else {
+                console.warn(`No audio configuration found for trigger: ${trigger}`);
+            }
+        }
+
+        function formatResponse(text) {
+            text = text.replace(/\[\d+:\d+†source\]/g, '');
+
+            // Convert Markdown to HTML
+            const html = marked.parse(text);
+            
+            // Sanitize the HTML
+            return DOMPurify.sanitize(html);
+        }
+        
+
+
+        // Drawing / Map Handling
+        const drawing = {
+                imageUrl: 'https://storage.cloud.google.com/szcontexts/Audcontext/PMWIDE.png',
+                opacity: 1.0,
+                places: [
+                    ['FREA', 500.00, 500.00, '', '', 'https://storage.googleapis.com/szcontexts/FOLDNA/FREA/2.png'],
+                    ['ARCHITECTURE', 500.00, 700.00, '', '', 'https://storage.googleapis.com/szcontexts/FOLDNA/ARCHITECTURE/2.png'],
+                    ['KAMPALA', 673.21, 600.00, '', '', 'https://storage.googleapis.com/szcontexts/FOLDNA/KAMPALA/2.png'],
+                    ['SCHOOL', 673.21, 400.00, '', '', 'https://storage.googleapis.com/szcontexts/FOLDNA/SCHOOL/2.png'],
+                    ['MAKERERE', 500.00, 300.00, '', '', 'https://storage.googleapis.com/szcontexts/FOLDNA/MAKERERE/2.png'],
+                    ['BUNTU', 326.79, 400.00, '', '', 'https://storage.googleapis.com/szcontexts/FOLDNA/BUNTU/2.png'],
+                    ['AKABOOZI', 326.79, 600.00, '', '', 'https://storage.googleapis.com/szcontexts/FOLDNA/AKABOOZI/2.png']
+                ]
+            };
+
+            const gridSize = 1000;
+            const initialZoomLevel = 1;
+
+            const map = L.map('map', {
+                center: [gridSize / 2, gridSize / 2],
+                zoom: initialZoomLevel,
+                crs: L.CRS.Simple,
+                zoomControl: false
+            });
+
+            map.attributionControl.setPrefix(false);
+            let currentLayer;
+
+            function loadDrawing() {
+                if (currentLayer) {
+                    map.removeLayer(currentLayer);
+                }
+
+                currentLayer = L.imageOverlay(drawing.imageUrl, [[0, 0], [gridSize, gridSize]], { opacity: drawing.opacity }).addTo(map);
+                map.setView([gridSize / 2, gridSize / 2], initialZoomLevel);
+
+                L.layerGroup().addTo(map);
+                drawing.places.forEach(([name, x, y, buttonText, buttonLink, imageUrl]) => {
+                    const icon = L.icon({
+                        iconUrl: imageUrl,
+                        iconSize: [300, 300],
+                        iconAnchor: [150, 150],
+                    });
+                    const marker = L.marker([x, y], { icon }).addTo(map);
+                    marker.bindPopup(`<strong>${name}</strong><br><a href="${buttonLink}" target="_blank">${buttonText}</a>`);
+
+                    marker.on('click', () => {
+                        document.getElementById('selected-item').innerText = `Selected Item: ${name}`;
+                        const selectedItemButton = document.getElementById('selected-item-button');
+                        selectedItemButton.innerText = buttonText;
+                        selectedItemButton.href = buttonLink;
+                        selectedItemButton.style.display = 'none';
+                    });
+                });
+            }
+
+            function changeOpacity() {
+                const opacity = document.getElementById('opacity-slider').value;
+                if (currentLayer) {
+                    currentLayer.setOpacity(opacity);
+                }
+            }
+
+            loadDrawing(); // Initial drawing load
+
+    });
+
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/audio-recorder-polyfill/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
+
+</body>
+</html>
+
